@@ -84,6 +84,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
                 <li>The file must be an Excel file (.xlsx or .xls).</li>
                 <li>Required Columns: <strong>ID, Account Number, Account Name, Address, Amount, Due Date, Amount After Due Date</strong>.</li>
              </ul>
+             
+             <div className="mt-4 pt-3 border-t border-blue-100 text-xs text-blue-700">
+               <strong>Public Deployment:</strong> To update the live site for all users, save your Excel file as <code>database.xlsx</code> and place it in the public root folder of your website.
+             </div>
+
              <button 
                onClick={handleDownloadTemplate}
                className="mt-3 flex items-center text-xs font-medium text-blue-700 hover:text-blue-800 hover:underline"

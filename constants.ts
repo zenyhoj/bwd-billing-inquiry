@@ -41,4 +41,3 @@ export const INITIAL_MOCK_DATA: WaterBill[] = [
 ];
 
 export const APP_NAME = "Buenavista Water District";
-export const STORAGE_KEY = "buenavista_water_data_v2";

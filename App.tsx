@@ -5,7 +5,9 @@ import { ResultTable } from './components/ResultTable';
 import { AdminPanel } from './components/AdminPanel';
 import { LoginModal } from './components/LoginModal';
 import { WaterBill } from './types';
-import { INITIAL_MOCK_DATA, APP_NAME, STORAGE_KEY } from './constants';
+import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
+import { saveAllBills, getAllBills } from './utils/db';
+import { parseExcelFile } from './utils/excelParser';
 import { Upload, Lock, LogOut } from 'lucide-react';
 
 export default function App() {
@@ -23,26 +25,59 @@ export default function App() {
 
   // Initialize data on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    const loadData = async () => {
       try {
-        setData(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse stored data", e);
+        // 1. Deployment Mode: Try fetching static database file from public folder
+        try {
+          const response = await fetch('/database.xlsx');
+          if (response.ok) {
+            const blob = await response.blob();
+            // Create a File object from the blob to reuse the existing parser
+            const file = new File([blob], "database.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const staticData = await parseExcelFile(file);
+            
+            if (staticData.length > 0) {
+              // If we found a static file, use it as the source of truth and update local DB
+              await saveAllBills(staticData);
+              setData(staticData);
+              return; // Exit early
+            }
+          }
+        } catch (fetchErr) {
+          // If fetch fails (e.g. file doesn't exist yet), silently ignore and fall back to DB
+          console.debug("No static database.xlsx found, using local storage.");
+        }
+
+        // 2. Fallback to Local IndexedDB (Previous admin uploads)
+        const storedBills = await getAllBills();
+        if (storedBills.length > 0) {
+          setData(storedBills);
+        } else {
+          // 3. Fallback to Mock Data (First time load, no file)
+          setData(INITIAL_MOCK_DATA);
+        }
+      } catch (error) {
+        console.error("Failed to load data:", error);
         setData(INITIAL_MOCK_DATA);
       }
-    } else {
-      setData(INITIAL_MOCK_DATA);
-    }
+    };
+    loadData();
   }, []);
 
   // Handler for Admin File Upload
-  const handleDataLoaded = (newData: WaterBill[]) => {
-    setData(newData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
-    // Reset search
-    setQuery('');
-    setHasSearched(false);
+  const handleDataLoaded = async (newData: WaterBill[]) => {
+    try {
+      // Save to IndexedDB
+      await saveAllBills(newData);
+      // Update UI State
+      setData(newData);
+      // Reset search
+      setQuery('');
+      setHasSearched(false);
+    } catch (error) {
+      console.error("Failed to save data:", error);
+      alert("Failed to save data to database. Please try again.");
+    }
   };
 
   // Logic to determine matches for both Search and Suggestions
@@ -112,7 +147,7 @@ export default function App() {
              <>
                <button 
                  onClick={() => setShowAdmin(true)}
-                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 transition-all rounded-full shadow-sm text-sm font-medium hover:shadow-md"
+                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-all rounded-full shadow-sm text-sm font-medium hover:shadow-md"
                >
                  <Upload className="h-4 w-4" />
                  <span>Upload Data</span>
@@ -187,7 +222,7 @@ export default function App() {
       {showLogin && (
         <LoginModal 
           onClose={() => setShowLogin(false)}
-          onLogin={() => setIsAdmin(true)}
+          onLogin={() => { setIsAdmin(true); setShowAdmin(true); }}
         />
       )}
 
