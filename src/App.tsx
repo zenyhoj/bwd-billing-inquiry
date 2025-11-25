@@ -8,13 +8,15 @@ import { WaterBill } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
 import { parseExcelFile } from './utils/excelParser';
-import { Upload, Lock, LogOut } from 'lucide-react';
+import { Upload, Lock, LogOut, Database, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function App() {
   // State
   const [data, setData] = useState<WaterBill[]>([]);
+  const [loading, setLoading] = useState(true); // Initial loading state
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [dataSource, setDataSource] = useState<'local' | 'live' | 'mock'>('mock');
   
   // Admin & Auth State
   const [showAdmin, setShowAdmin] = useState(false);
@@ -26,39 +28,59 @@ export default function App() {
   // Initialize data on mount
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
+        let loaded = false;
+
         // 1. Deployment Mode: Try fetching static database file from public folder
+        // Add timestamp to prevent caching
         try {
-          const response = await fetch('/database.xlsx');
-          if (response.ok) {
+          const response = await fetch(`/database.xlsx?t=${Date.now()}`);
+          
+          // Check content type to ensure we didn't get an HTML 404 page
+          const contentType = response.headers.get('content-type');
+          
+          if (response.ok && contentType && !contentType.includes('text/html')) {
             const blob = await response.blob();
             // Create a File object from the blob to reuse the existing parser
             const file = new File([blob], "database.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const staticData = await parseExcelFile(file);
             
             if (staticData.length > 0) {
-              // If we found a static file, use it as the source of truth and update local DB
-              await saveAllBills(staticData);
+              // If we found a static file, use it as the source of truth
+              // We do NOT save to IndexedDB here to avoid conflicts. The static file is the source.
               setData(staticData);
-              return; // Exit early
+              setDataSource('live');
+              loaded = true;
             }
           }
         } catch (fetchErr) {
-          // If fetch fails (e.g. file doesn't exist yet), silently ignore and fall back to DB
-          console.debug("No static database.xlsx found, using local storage.");
+          // If fetch fails (e.g. file doesn't exist yet), silently ignore and fall back
+          console.debug("No static database.xlsx found or failed to parse:", fetchErr);
         }
 
-        // 2. Fallback to Local IndexedDB (Previous admin uploads)
-        const storedBills = await getAllBills();
-        if (storedBills.length > 0) {
-          setData(storedBills);
-        } else {
-          // 3. Fallback to Mock Data (First time load, no file)
-          setData(INITIAL_MOCK_DATA);
+        if (!loaded) {
+          // 2. Fallback to Local IndexedDB (Previous admin uploads)
+          const storedBills = await getAllBills();
+          if (storedBills.length > 0) {
+            setData(storedBills);
+            setDataSource('local');
+            loaded = true;
+          }
         }
+
+        if (!loaded) {
+           // 3. Fallback to Mock Data (First time load, no file)
+           setData(INITIAL_MOCK_DATA);
+           setDataSource('mock');
+        }
+
       } catch (error) {
         console.error("Failed to load data:", error);
         setData(INITIAL_MOCK_DATA);
+        setDataSource('mock');
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
@@ -71,6 +93,7 @@ export default function App() {
       await saveAllBills(newData);
       // Update UI State
       setData(newData);
+      setDataSource('local');
       // Reset search
       setQuery('');
       setHasSearched(false);
@@ -130,6 +153,15 @@ export default function App() {
 
   // Derived state for layout transition
   const isCentered = !hasSearched;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-500" />
+        <p className="font-medium text-slate-600">Loading Database...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex flex-col relative font-sans text-gray-900">
@@ -201,18 +233,28 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-gray-400 text-sm relative mt-auto">
-        <div className="flex justify-center items-center gap-2">
-          <span>&copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.</span>
-          
+      <footer className="py-6 px-4 text-center text-gray-400 text-xs sm:text-sm relative mt-auto flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
+        <span>&copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.</span>
+        
+        <div className="flex items-center gap-2">
+          {/* Data Source Indicator */}
+          <div className={`flex items-center px-2 py-0.5 rounded-full border text-[10px] uppercase font-bold tracking-wider ${
+            dataSource === 'live' ? 'bg-green-50 text-green-700 border-green-200' : 
+            dataSource === 'local' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+            'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            {dataSource === 'live' && <Database className="w-3 h-3 mr-1" />}
+            {dataSource === 'live' ? 'Live Database' : dataSource === 'local' ? 'Local Cache' : 'Demo Data'}
+          </div>
+
           {/* Discreet Admin Login Trigger */}
           {!isAdmin && (
             <button 
               onClick={() => setShowLogin(true)}
-              className="p-2 text-gray-300 hover:text-gray-600 transition-colors"
+              className="p-1.5 text-gray-300 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-100"
               title="Admin Login"
             >
-              <Lock className="h-4 w-4" />
+              <Lock className="h-3 w-3" />
             </button>
           )}
         </div>

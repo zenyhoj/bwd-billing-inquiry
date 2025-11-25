@@ -13,7 +13,8 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
           return;
         }
 
-        const workbook = XLSX.read(data, { type: 'binary' });
+        // Use array buffer type for more robust handling of network files
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         
@@ -107,6 +108,7 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
     };
 
     reader.onerror = (error) => reject(error);
-    reader.readAsBinaryString(file);
+    // Change to readAsArrayBuffer for better compatibility with XLSX.read type:'array'
+    reader.readAsArrayBuffer(file);
   });
 };
