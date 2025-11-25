@@ -13,8 +13,12 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
           return;
         }
 
-        // Use array buffer type for more robust handling of network files
-        const workbook = XLSX.read(data, { type: 'array' });
+        // Robustly handle ArrayBuffer by converting to Uint8Array
+        // This ensures compatibility with XLSX.read type: 'array'
+        const arrayBuffer = data as ArrayBuffer;
+        const uint8View = new Uint8Array(arrayBuffer);
+        
+        const workbook = XLSX.read(uint8View, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         
@@ -44,8 +48,7 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
           lateAmount: findCol(['amount after', 'late', 'penalty', 'after due']),
         };
 
-        // Fallback to index-based if headers aren't found (assuming the prompt's specific order)
-        // Order: id, accountNumber, accountName, address, amount, dueDate, amountAfterDueDate
+        // Fallback to index-based if headers aren't found
         if (map.accNum === -1 || map.accName === -1) {
            map = {
              id: 0,
@@ -64,7 +67,6 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
         const cleanStr = (val: any) => String(val || '').trim();
         const cleanNum = (val: any) => {
           if (typeof val === 'string') {
-             // Remove commas and currency symbols
              val = val.replace(/[₱,]/g, '').trim();
           }
           const num = Number(val);
@@ -72,7 +74,6 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
         };
         const cleanDate = (val: any) => {
           if (!val) return '';
-          // If Excel parses it as a number (Excel serial date)
           if (typeof val === 'number') {
             const date = XLSX.SSF.parse_date_code(val);
             return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
@@ -84,7 +85,6 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
           const row = jsonData[i] as any[];
           if (!row || row.length === 0) continue;
 
-          // Map data
           const bill: WaterBill = {
             id: map.id !== -1 && row[map.id] ? cleanStr(row[map.id]) : `row-${i}`,
             accountNumber: map.accNum !== -1 ? cleanStr(row[map.accNum]) : '',
@@ -95,7 +95,6 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
             amountAfterDueDate: map.lateAmount !== -1 ? cleanNum(row[map.lateAmount]) : 0,
           };
 
-          // Valid record check
           if (bill.accountNumber || bill.accountName) {
             bills.push(bill);
           }
@@ -108,7 +107,6 @@ export const parseExcelFile = (file: File): Promise<WaterBill[]> => {
     };
 
     reader.onerror = (error) => reject(error);
-    // Change to readAsArrayBuffer for better compatibility with XLSX.read type:'array'
     reader.readAsArrayBuffer(file);
   });
 };

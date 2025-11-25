@@ -30,7 +30,7 @@ export default function App() {
     let isMounted = true;
 
     const loadData = async () => {
-      // Safety timer: If data loading hangs for > 3 seconds, force unlock
+      // Safety timer: If data loading hangs for > 8 seconds, force unlock
       const safetyTimeout = setTimeout(() => {
         if (isMounted && loading) {
           console.warn("Data loading timed out, unlocking UI.");
@@ -40,16 +40,15 @@ export default function App() {
              setDataSource('mock');
           }
         }
-      }, 3000);
+      }, 8000);
 
       try {
         let loaded = false;
 
         // 1. Live Mode: Try fetching static database file from public folder
-        // This is the primary method for public access via GitHub Desktop deployment
         try {
-          // Use 'no-cache' to ensure we get the latest file from Netlify/Server
-          const response = await fetch('/database.xlsx', {
+          const cacheBuster = `?t=${new Date().getTime()}`;
+          const response = await fetch(`/database.xlsx${cacheBuster}`, {
             method: 'GET',
             headers: {
               'Cache-Control': 'no-cache',
@@ -57,10 +56,11 @@ export default function App() {
             }
           });
           
+          // Check if response is strictly OK and NOT HTML (which happens on 404s in SPAs)
           const contentType = response.headers.get('content-type');
-          
           if (response.ok && contentType && !contentType.includes('text/html')) {
             const blob = await response.blob();
+            // Create a File object from the blob to reuse the existing parser
             const file = new File([blob], "database.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const staticData = await parseExcelFile(file);
             
@@ -69,11 +69,11 @@ export default function App() {
                 setData(staticData);
                 setDataSource('live');
                 loaded = true;
-                // We do NOT automatically save to local DB here to avoid overwriting 
-                // any specific local work unless explicitly requested, but this serves
-                // as the single source of truth for public users.
+                console.log(`Loaded ${staticData.length} records from live database.xlsx`);
               }
             }
+          } else {
+            console.debug(`Live database fetch skipped. Status: ${response.status}, Type: ${contentType}`);
           }
         } catch (fetchErr) {
           console.debug("Live database fetch skipped or failed:", fetchErr);
@@ -94,6 +94,7 @@ export default function App() {
         if (!loaded) {
            // 3. Demo Mode: Fallback to Mock Data
            if (isMounted) {
+             console.log("Using Mock Data");
              setData(INITIAL_MOCK_DATA);
              setDataSource('mock');
            }
@@ -120,14 +121,9 @@ export default function App() {
   // Handler for Admin File Upload (The "Upload Button")
   const handleDataLoaded = async (newData: WaterBill[]) => {
     try {
-      // 1. Persist to Local IndexedDB so it survives refresh for THIS specific browser
       await saveAllBills(newData);
-      
-      // 2. Update UI immediately
       setData(newData);
       setDataSource('local');
-      
-      // 3. Reset UI state
       setQuery('');
       setHasSearched(false);
     } catch (error) {
@@ -258,7 +254,6 @@ export default function App() {
         <span>&copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.</span>
         
         <div className="flex items-center gap-2">
-          {/* Data Source Indicator */}
           <div className={`flex items-center px-2 py-0.5 rounded-full border text-[10px] uppercase font-bold tracking-wider ${
             dataSource === 'live' ? 'bg-green-50 text-green-700 border-green-200' : 
             dataSource === 'local' ? 'bg-blue-50 text-blue-700 border-blue-200' :
