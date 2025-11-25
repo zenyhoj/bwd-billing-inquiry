@@ -27,8 +27,19 @@ export default function App() {
 
   // Initialize data on mount
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
-      setLoading(true);
+      // Safety timer: If data loading hangs for > 3 seconds, force unlock
+      const safetyTimeout = setTimeout(() => {
+        if (isMounted && loading) {
+          console.warn("Data loading timed out, unlocking UI.");
+          setLoading(false);
+          // Ensure we have something to show
+          setData(prev => prev.length > 0 ? prev : INITIAL_MOCK_DATA);
+        }
+      }, 3000);
+
       try {
         let loaded = false;
 
@@ -48,10 +59,11 @@ export default function App() {
             
             if (staticData.length > 0) {
               // If we found a static file, use it as the source of truth
-              // We do NOT save to IndexedDB here to avoid conflicts. The static file is the source.
-              setData(staticData);
-              setDataSource('live');
-              loaded = true;
+              if (isMounted) {
+                setData(staticData);
+                setDataSource('live');
+                loaded = true;
+              }
             }
           }
         } catch (fetchErr) {
@@ -63,27 +75,38 @@ export default function App() {
           // 2. Fallback to Local IndexedDB (Previous admin uploads)
           const storedBills = await getAllBills();
           if (storedBills.length > 0) {
-            setData(storedBills);
-            setDataSource('local');
-            loaded = true;
+            if (isMounted) {
+              setData(storedBills);
+              setDataSource('local');
+              loaded = true;
+            }
           }
         }
 
         if (!loaded) {
            // 3. Fallback to Mock Data (First time load, no file)
-           setData(INITIAL_MOCK_DATA);
-           setDataSource('mock');
+           if (isMounted) {
+             setData(INITIAL_MOCK_DATA);
+             setDataSource('mock');
+           }
         }
 
       } catch (error) {
         console.error("Failed to load data:", error);
-        setData(INITIAL_MOCK_DATA);
-        setDataSource('mock');
+        if (isMounted) {
+          setData(INITIAL_MOCK_DATA);
+          setDataSource('mock');
+        }
       } finally {
-        setLoading(false);
+        clearTimeout(safetyTimeout);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     loadData();
+
+    return () => { isMounted = false; };
   }, []);
 
   // Handler for Admin File Upload
