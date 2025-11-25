@@ -50,7 +50,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
   };
 
   const handleDownloadTemplate = () => {
-    // Updated headers based on the user's specific list
     const headers = ['ID', 'Account Number', 'Account Name', 'Address', 'Amount', 'Due Date', 'Amount After Due Date'];
     const sample = ['1', '100-001-000', 'Juan Dela Cruz', 'Poblacion, Buenavista', 520.50, '2023-11-15', 572.55];
     
@@ -80,13 +79,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
           <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
              <h3 className="text-sm font-semibold text-blue-900 mb-2">Instructions</h3>
              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>Upload the monthly billing data to update the search results.</li>
-                <li>The file must be an Excel file (.xlsx or .xls).</li>
                 <li>Required Columns: <strong>ID, Account Number, Account Name, Address, Amount, Due Date, Amount After Due Date</strong>.</li>
              </ul>
              
-             <div className="mt-4 pt-3 border-t border-blue-100 text-xs text-blue-700">
-               <strong>Public Deployment:</strong> To update the live site for all users, save your Excel file as <code>database.xlsx</code> and place it in the public root folder of your website.
+             <div className="mt-4 pt-3 border-t border-blue-100 text-xs text-blue-700 space-y-2">
+               <div>
+                 <strong>Option 1 (Public Update):</strong> Save your file as <code>database.xlsx</code> and upload it to the <code>public/</code> folder using GitHub Desktop. This updates the site for ALL users.
+               </div>
+               <div>
+                 <strong>Option 2 (Local Test):</strong> Use the upload button below. This updates the search result ONLY for this browser/device.
+               </div>
              </div>
 
              <button 

@@ -8,7 +8,7 @@ import { WaterBill } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
 import { parseExcelFile } from './utils/excelParser';
-import { Upload, Lock, LogOut, Database, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Lock, LogOut, Database, Loader2 } from 'lucide-react';
 
 export default function App() {
   // State
@@ -35,44 +35,52 @@ export default function App() {
         if (isMounted && loading) {
           console.warn("Data loading timed out, unlocking UI.");
           setLoading(false);
-          // Ensure we have something to show
-          setData(prev => prev.length > 0 ? prev : INITIAL_MOCK_DATA);
+          if (data.length === 0) {
+             setData(INITIAL_MOCK_DATA);
+             setDataSource('mock');
+          }
         }
       }, 3000);
 
       try {
         let loaded = false;
 
-        // 1. Deployment Mode: Try fetching static database file from public folder
-        // Add timestamp to prevent caching
+        // 1. Live Mode: Try fetching static database file from public folder
+        // This is the primary method for public access via GitHub Desktop deployment
         try {
-          const response = await fetch(`/database.xlsx?t=${Date.now()}`);
+          // Use 'no-cache' to ensure we get the latest file from Netlify/Server
+          const response = await fetch('/database.xlsx', {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
           
-          // Check content type to ensure we didn't get an HTML 404 page
           const contentType = response.headers.get('content-type');
           
           if (response.ok && contentType && !contentType.includes('text/html')) {
             const blob = await response.blob();
-            // Create a File object from the blob to reuse the existing parser
             const file = new File([blob], "database.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const staticData = await parseExcelFile(file);
             
             if (staticData.length > 0) {
-              // If we found a static file, use it as the source of truth
               if (isMounted) {
                 setData(staticData);
                 setDataSource('live');
                 loaded = true;
+                // We do NOT automatically save to local DB here to avoid overwriting 
+                // any specific local work unless explicitly requested, but this serves
+                // as the single source of truth for public users.
               }
             }
           }
         } catch (fetchErr) {
-          // If fetch fails (e.g. file doesn't exist yet), silently ignore and fall back
-          console.debug("No static database.xlsx found or failed to parse:", fetchErr);
+          console.debug("Live database fetch skipped or failed:", fetchErr);
         }
 
         if (!loaded) {
-          // 2. Fallback to Local IndexedDB (Previous admin uploads)
+          // 2. Local Mode: Fallback to IndexedDB (Admin Upload Button)
           const storedBills = await getAllBills();
           if (storedBills.length > 0) {
             if (isMounted) {
@@ -84,7 +92,7 @@ export default function App() {
         }
 
         if (!loaded) {
-           // 3. Fallback to Mock Data (First time load, no file)
+           // 3. Demo Mode: Fallback to Mock Data
            if (isMounted) {
              setData(INITIAL_MOCK_DATA);
              setDataSource('mock');
@@ -92,7 +100,7 @@ export default function App() {
         }
 
       } catch (error) {
-        console.error("Failed to load data:", error);
+        console.error("Critical error loading data:", error);
         if (isMounted) {
           setData(INITIAL_MOCK_DATA);
           setDataSource('mock');
@@ -104,20 +112,22 @@ export default function App() {
         }
       }
     };
+    
     loadData();
-
     return () => { isMounted = false; };
   }, []);
 
-  // Handler for Admin File Upload
+  // Handler for Admin File Upload (The "Upload Button")
   const handleDataLoaded = async (newData: WaterBill[]) => {
     try {
-      // Save to IndexedDB
+      // 1. Persist to Local IndexedDB so it survives refresh for THIS specific browser
       await saveAllBills(newData);
-      // Update UI State
+      
+      // 2. Update UI immediately
       setData(newData);
       setDataSource('local');
-      // Reset search
+      
+      // 3. Reset UI state
       setQuery('');
       setHasSearched(false);
     } catch (error) {
@@ -126,7 +136,6 @@ export default function App() {
     }
   };
 
-  // Logic to determine matches for both Search and Suggestions
   const getMatches = (searchQuery: string) => {
     if (!searchQuery.trim()) return [];
     const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -134,22 +143,18 @@ export default function App() {
     return data.filter(item => {
       const name = (item.accountName || '').toLowerCase();
       const number = (item.accountNumber || '').toLowerCase();
-      // Check if EVERY search term is present in either the name or the number
       return searchTerms.every(term => name.includes(term) || number.includes(term));
     });
   };
 
-  // Handler for Search
   const handleSearch = () => {
     const results = getMatches(query);
     setFilteredResults(results);
     setHasSearched(true);
   };
 
-  // Handler for Selecting a Suggestion
   const handleSelectSuggestion = (bill: WaterBill) => {
     setQuery(bill.accountName);
-    // When selecting a specific suggestion, we show just that one result
     setFilteredResults([bill]);
     setHasSearched(true);
   };
@@ -167,14 +172,11 @@ export default function App() {
     }
   };
 
-  // Derived state for suggestions
-  // Show suggestions only if user hasn't executed a search yet and query is long enough
   const suggestions = useMemo(() => {
     if (hasSearched || query.length < 2) return [];
-    return getMatches(query).slice(0, 5); // Limit to top 5
+    return getMatches(query).slice(0, 5);
   }, [query, data, hasSearched]);
 
-  // Derived state for layout transition
   const isCentered = !hasSearched;
 
   if (loading) {
@@ -197,7 +199,6 @@ export default function App() {
         </div>
         
         <div className="flex items-center space-x-4">
-           {/* Admin Trigger - Only visible when logged in */}
            {isAdmin && (
              <>
                <button 
@@ -223,7 +224,6 @@ export default function App() {
       {/* Main Content Area */}
       <main className={`flex-grow flex flex-col items-center px-4 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isCentered ? 'justify-center pb-32' : 'pt-12 justify-start'}`}>
         
-        {/* Brand Hero (Only visible when centered or shrinks when searched) */}
         <div className={`flex flex-col items-center mb-8 transition-all duration-500 ${isCentered ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 -translate-y-10 hidden'}`}>
           <div className="mb-6 p-4 bg-white rounded-3xl shadow-xl shadow-blue-100/50">
              <Logo className="h-20 w-20" />
@@ -234,7 +234,6 @@ export default function App() {
           <p className="text-gray-500 text-lg">Billing Inquiry System</p>
         </div>
 
-        {/* Search Section */}
         <div className={`w-full max-w-2xl transition-all duration-500 z-20 ${isCentered ? 'translate-y-0' : '-translate-y-4'}`}>
           <SearchBar 
             value={query}
@@ -246,7 +245,6 @@ export default function App() {
           />
         </div>
 
-        {/* Results Section */}
         {hasSearched && (
           <div className="w-full max-w-5xl px-0 md:px-4 pb-12 z-10">
             <ResultTable results={filteredResults} />
@@ -270,7 +268,6 @@ export default function App() {
             {dataSource === 'live' ? 'Live Database' : dataSource === 'local' ? 'Local Cache' : 'Demo Data'}
           </div>
 
-          {/* Discreet Admin Login Trigger */}
           {!isAdmin && (
             <button 
               onClick={() => setShowLogin(true)}
@@ -283,7 +280,6 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Admin Modals */}
       {showLogin && (
         <LoginModal 
           onClose={() => setShowLogin(false)}
