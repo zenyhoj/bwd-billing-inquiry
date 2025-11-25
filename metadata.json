@@ -1,0 +1,5 @@
+{
+  "name": "Buenavista Water Inquiry",
+  "description": "A clean, Google-search style application for Buenavista Water District customers to inquire about their billing status, backed by monthly Excel data uploads.",
+  "requestFramePermissions": []
+}
