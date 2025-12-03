@@ -145,9 +145,27 @@ export default function App() {
 
   const handleSelectSuggestion = (bill: WaterBill) => {
     setQuery(bill.accountName);
-    // FIX: Instead of showing just the single record clicked (which hides duplicates/other months),
-    // run a full search based on the name to show ALL matching records.
-    const matches = getMatches(bill.accountName);
+    
+    // GROUPING LOGIC:
+    // When a user selects a suggestion, we want to show ALL bills for that account,
+    // not just the specific one they clicked.
+    // We try to match by Account Number first (most reliable), then fall back to Name.
+    
+    let matches: WaterBill[] = [];
+
+    // Helper to clean number (remove dashes/spaces) for comparison
+    const cleanNum = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const targetNum = cleanNum(bill.accountNumber);
+
+    if (targetNum && targetNum.length > 3) { // Ensure we have a valid-ish number
+      matches = data.filter(item => cleanNum(item.accountNumber) === targetNum);
+    }
+
+    // Fallback: If no matches by number (or no number exists), use the fuzzy name search
+    if (matches.length === 0) {
+      matches = getMatches(bill.accountName);
+    }
+
     setFilteredResults(matches);
     setHasSearched(true);
   };
@@ -178,8 +196,9 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center text-gray-400">
-        <Loader2 className="h-8 w-8 animate-spin mb-4 text-gray-600" />
-        <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Connecting to Database</p>
+        <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
+        <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Loading All Records...</p>
+        <p className="text-xs text-gray-400 mt-2">Connecting to Database</p>
       </div>
     );
   }
