@@ -5,9 +5,9 @@ import { WaterBill } from '../types';
 const mapToFrontend = (row: any): WaterBill => ({
   id: row.id,
   accountNumber: row.account_number,
-  accountName: row.account_name,
+  accountName: row.name, // Mapped from DB column 'name'
   address: row.address,
-  amount: Number(row.amount),
+  amount: Number(row.bill_amount), // Mapped from DB column 'bill_amount'
   dueDate: row.due_date,
   amountAfterDueDate: Number(row.amount_after_due_date),
 });
@@ -16,9 +16,9 @@ const mapToFrontend = (row: any): WaterBill => ({
 const mapToDb = (bill: WaterBill) => ({
   id: bill.id,
   account_number: bill.accountNumber,
-  account_name: bill.accountName,
+  name: bill.accountName, // Maps to DB column 'name'
   address: bill.address,
-  amount: bill.amount,
+  bill_amount: bill.amount, // Maps to DB column 'bill_amount'
   due_date: bill.dueDate,
   amount_after_due_date: bill.amountAfterDueDate,
 });
@@ -38,7 +38,6 @@ export const getAllBills = async (): Promise<WaterBill[]> => {
 
 export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
   // 1. Fetch all IDs first to efficiently delete them
-  // This is safer than using a 'not equals' workaround for truncate
   const { data: existingIds, error: fetchError } = await supabase
     .from('water_bills')
     .select('id');
@@ -48,7 +47,7 @@ export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
   if (existingIds && existingIds.length > 0) {
      const idsToDelete = existingIds.map(r => r.id);
      
-     // Delete in batches if too many, but Supabase handles reasonably large arrays
+     // Delete in batches if too many
      const { error: deleteError } = await supabase
        .from('water_bills')
        .delete()
