@@ -7,7 +7,9 @@ import { LoginModal } from './components/LoginModal';
 import { WaterBill } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
-import { Upload, Lock, LogOut, Database, Loader2, Cloud } from 'lucide-react';
+import { Upload, Lock, LogOut, Loader2, Cloud } from 'lucide-react';
+import { supabase } from './lib/supabase';
+import { Session } from '@supabase/supabase-js';
 
 export default function App() {
   // State
@@ -18,19 +20,31 @@ export default function App() {
   const [dataSource, setDataSource] = useState<'supabase' | 'mock'>('mock');
   
   // Admin & Auth State
+  const [session, setSession] = useState<Session | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   
   const [filteredResults, setFilteredResults] = useState<WaterBill[]>([]);
 
-  // Initialize data on mount
+  // Initialize data and auth on mount
   useEffect(() => {
     let isMounted = true;
 
+    // 1. Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // 2. Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    // 3. Load Bill Data
     const loadData = async () => {
       try {
-        // Fetch from Supabase
         const supabaseData = await getAllBills();
         
         if (isMounted) {
@@ -57,7 +71,10 @@ export default function App() {
     };
     
     loadData();
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false; 
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleDataLoaded = async (newData: WaterBill[]) => {
@@ -75,6 +92,11 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setShowAdmin(false);
   };
 
   const getMatches = (searchQuery: string) => {
@@ -119,6 +141,7 @@ export default function App() {
   }, [query, data, hasSearched]);
 
   const isCentered = !hasSearched;
+  const isAdmin = !!session; // User is admin if logged in
 
   if (loading) {
     return (
@@ -142,6 +165,9 @@ export default function App() {
         <div className="flex items-center space-x-4">
            {isAdmin && (
              <>
+               <span className="text-xs text-gray-500 hidden sm:inline-block pr-2">
+                 {session.user.email}
+               </span>
                <button 
                  onClick={() => setShowAdmin(true)}
                  className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide"
@@ -151,13 +177,21 @@ export default function App() {
                </button>
                
                <button 
-                 onClick={() => setIsAdmin(false)}
+                 onClick={handleLogout}
                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                  title="Sign Out"
                >
                  <LogOut className="h-4 w-4" />
                </button>
              </>
+           )}
+           {!isAdmin && (
+             <button
+              onClick={() => setShowLogin(true)}
+              className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+             >
+               Sign In
+             </button>
            )}
         </div>
       </nav>
@@ -225,7 +259,7 @@ export default function App() {
       {showLogin && (
         <LoginModal 
           onClose={() => setShowLogin(false)}
-          onLogin={() => { setIsAdmin(true); setShowAdmin(true); }}
+          onLoginSuccess={() => setShowAdmin(true)}
         />
       )}
 
