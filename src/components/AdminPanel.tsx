@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, X, FileDown, Cloud, Database } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { parseExcelFile } from '../utils/excelParser';
 import { WaterBill } from '../types';
 
@@ -48,6 +49,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = ['ID', 'Account Number', 'Account Name', 'Address', 'Amount', 'Due Date', 'Amount After Due Date'];
+    const sample = ['1', '100-001-000', 'Juan Dela Cruz', 'Poblacion, Buenavista', 520.50, '2023-11-15', 572.55];
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Template");
+    XLSX.writeFile(wb, "bwd_database_template.xlsx");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/90 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh] border border-gray-100 shadow-2xl rounded-2xl">
@@ -94,12 +105,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
           </div>
 
           <div className="mb-6">
-             <h3 className="text-sm font-semibold text-gray-900 mb-3">Update Database</h3>
+             <div className="flex justify-between items-center mb-3">
+               <h3 className="text-sm font-semibold text-gray-900">Update Database</h3>
+               <button 
+                 onClick={handleDownloadTemplate}
+                 className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+               >
+                 <FileDown className="w-3 h-3 mr-1" />
+                 Download Template
+               </button>
+             </div>
+             
              <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 mb-4 flex items-start">
                 <AlertTriangle className="h-5 w-5 text-amber-600 mr-3 shrink-0 mt-0.5" />
                 <div className="text-sm text-amber-800">
                   <p className="font-medium">Warning: Overwrite Action</p>
-                  <p className="opacity-90">Uploading a new file will <strong>replace all existing records</strong> in the database. Ensure your Excel file contains the complete list of current bills.</p>
+                  <p className="opacity-90">Uploading a new file will <strong>replace all existing records</strong> in the cloud database. Please ensure your Excel file contains the complete list of current bills.</p>
                 </div>
              </div>
           </div>

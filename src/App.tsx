@@ -7,7 +7,7 @@ import { LoginModal } from './components/LoginModal';
 import { WaterBill, AppUser } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
-import { Lock, LogOut, Loader2, Cloud, Database, WifiOff } from 'lucide-react';
+import { Lock, LogOut, Loader2, Cloud, Database, WifiOff, Upload } from 'lucide-react';
 
 // STRICT ADMIN EMAIL
 const ADMIN_EMAIL = 'joe.balingit@gmail.com';
@@ -43,7 +43,7 @@ export default function App() {
       }
     }
 
-    // 2. Load Bill Data
+    // 2. Load Bill Data from Supabase
     const loadData = async () => {
       try {
         const supabaseData = await getAllBills();
@@ -59,6 +59,7 @@ export default function App() {
       } catch (error) {
         console.error("Critical error loading data from Supabase:", error);
         if (isMounted) {
+          // Only fallback to mock if Supabase fails entirely
           setData(INITIAL_MOCK_DATA);
           setDataSource('mock');
         }
@@ -157,7 +158,7 @@ export default function App() {
     const cleanNum = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const targetNum = cleanNum(bill.accountNumber);
 
-    if (targetNum && targetNum.length > 3) { // Ensure we have a valid-ish number
+    if (targetNum && targetNum.length > 3) { // Ensure we have a valid-ish number to filter by
       matches = data.filter(item => cleanNum(item.accountNumber) === targetNum);
     }
 
@@ -195,7 +196,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-gray-400">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-500">
         <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
         <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Loading All Records...</p>
         <p className="text-xs text-gray-400 mt-2">Connecting to Database</p>
