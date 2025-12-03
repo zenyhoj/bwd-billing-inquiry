@@ -145,7 +145,10 @@ export default function App() {
 
   const handleSelectSuggestion = (bill: WaterBill) => {
     setQuery(bill.accountName);
-    setFilteredResults([bill]);
+    // FIX: Instead of showing just the single record clicked (which hides duplicates/other months),
+    // run a full search based on the name to show ALL matching records.
+    const matches = getMatches(bill.accountName);
+    setFilteredResults(matches);
     setHasSearched(true);
   };
 
