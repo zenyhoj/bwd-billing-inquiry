@@ -109,11 +109,16 @@ export default function App() {
     return data.filter(item => {
       // Robust string conversion in case data fields are null or numbers
       const name = String(item.accountName || '').toLowerCase();
+      // Remove spaces from account number for searching (e.g. 100-001 matches 100001)
       const number = String(item.accountNumber || '').toLowerCase();
+      const cleanNumber = number.replace(/[^a-z0-9]/g, '');
       
       // Check if ALL search terms appear in EITHER the name OR the number
       // This allows searching by "100-001" or "Juan" or "Juan 100"
-      return searchTerms.every(term => name.includes(term) || number.includes(term));
+      return searchTerms.every(term => {
+        const cleanTerm = term.replace(/[^a-z0-9]/g, '');
+        return name.includes(term) || number.includes(term) || (cleanNumber && cleanTerm && cleanNumber.includes(cleanTerm));
+      });
     });
   };
 

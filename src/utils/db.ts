@@ -25,36 +25,74 @@ const mapToDb = (bill: WaterBill) => ({
 });
 
 export const getAllBills = async (): Promise<WaterBill[]> => {
-  const { data, error } = await supabase
-    .from('water_bills')
-    .select('*');
+  let allBills: any[] = [];
+  let from = 0;
+  const limit = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error('Error fetching data from Supabase:', error);
-    throw error;
+  // Loop to fetch all records in batches of 1000
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('water_bills')
+      .select('*')
+      .range(from, from + limit - 1);
+
+    if (error) {
+      console.error('Error fetching data from Supabase:', error);
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      allBills = [...allBills, ...data];
+      from += limit;
+      // If we got fewer records than the limit, we've reached the end
+      if (data.length < limit) {
+        hasMore = false;
+      }
+    } else {
+      hasMore = false;
+    }
   }
 
-  return (data || []).map(mapToFrontend);
+  return allBills.map(mapToFrontend);
 };
 
 export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
   // 1. Fetch all IDs first to efficiently delete them
-  const { data: existingIds, error: fetchError } = await supabase
-    .from('water_bills')
-    .select('id');
-    
-  if (fetchError) throw fetchError;
+  // We need to fetch ALL IDs here too, just like select to ensure we clean the whole DB
+  let allIdsToDelete: string[] = [];
+  let from = 0;
+  const limit = 1000;
+  let hasMore = true;
 
-  if (existingIds && existingIds.length > 0) {
-     const idsToDelete = existingIds.map(r => r.id);
-     
-     // Delete in batches if too many
-     const { error: deleteError } = await supabase
-       .from('water_bills')
-       .delete()
-       .in('id', idsToDelete);
-       
-     if (deleteError) throw deleteError;
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('water_bills')
+      .select('id')
+      .range(from, from + limit - 1);
+      
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allIdsToDelete = [...allIdsToDelete, ...data.map(r => r.id)];
+      from += limit;
+      if (data.length < limit) hasMore = false;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  if (allIdsToDelete.length > 0) {
+     // Delete in batches to avoid URI too long or request limits
+     for (let i = 0; i < allIdsToDelete.length; i += limit) {
+        const batchIds = allIdsToDelete.slice(i, i + limit);
+        const { error: deleteError } = await supabase
+         .from('water_bills')
+         .delete()
+         .in('id', batchIds);
+         
+        if (deleteError) throw deleteError;
+     }
   }
 
   // 2. Insert new records in batches
