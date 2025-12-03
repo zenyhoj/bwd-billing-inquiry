@@ -11,6 +11,8 @@ import { Upload, Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
+const ADMIN_EMAIL = 'joe.balingit@gmail.com';
+
 export default function App() {
   // State
   const [data, setData] = useState<WaterBill[]>([]);
@@ -149,7 +151,9 @@ export default function App() {
   }, [query, data, hasSearched]);
 
   const isCentered = !hasSearched;
-  const isAdmin = !!session; // User is admin if logged in
+  const isLoggedIn = !!session;
+  // STRICT CHECK: Only the specific email can see admin features
+  const isOwner = session?.user?.email === ADMIN_EMAIL;
 
   if (loading) {
     return (
@@ -171,18 +175,21 @@ export default function App() {
         </div>
         
         <div className="flex items-center space-x-4">
-           {isAdmin && (
+           {isLoggedIn ? (
              <>
                <span className="text-xs text-gray-500 hidden sm:inline-block pr-2">
                  {session?.user?.email}
                </span>
-               <button 
-                 onClick={() => setShowAdmin(true)}
-                 className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide shadow-sm"
-               >
-                 <Database className="h-3 w-3" />
-                 <span>Manage Database</span>
-               </button>
+               
+               {isOwner && (
+                 <button 
+                   onClick={() => setShowAdmin(true)}
+                   className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide shadow-sm"
+                 >
+                   <Database className="h-3 w-3" />
+                   <span>Manage Database</span>
+                 </button>
+               )}
                
                <button 
                  onClick={handleLogout}
@@ -192,8 +199,7 @@ export default function App() {
                  <LogOut className="h-4 w-4" />
                </button>
              </>
-           )}
-           {!isAdmin && (
+           ) : (
              <button
               onClick={() => setShowLogin(true)}
               className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
@@ -252,7 +258,7 @@ export default function App() {
             {dataSource === 'supabase' ? 'Supabase Connected' : 'Demo Mode'}
           </div>
 
-          {!isAdmin && (
+          {!isLoggedIn && (
             <button 
               onClick={() => setShowLogin(true)}
               className="p-1 text-gray-300 hover:text-gray-600 transition-colors"
@@ -271,7 +277,7 @@ export default function App() {
         />
       )}
 
-      {showAdmin && isAdmin && (
+      {showAdmin && isOwner && (
         <AdminPanel 
           onClose={() => setShowAdmin(false)} 
           onDataLoaded={handleDataLoaded}
