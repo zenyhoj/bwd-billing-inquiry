@@ -107,8 +107,12 @@ export default function App() {
     const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
 
     return data.filter(item => {
-      const name = (item.accountName || '').toLowerCase();
-      const number = (item.accountNumber || '').toLowerCase();
+      // Robust string conversion in case data fields are null or numbers
+      const name = String(item.accountName || '').toLowerCase();
+      const number = String(item.accountNumber || '').toLowerCase();
+      
+      // Check if ALL search terms appear in EITHER the name OR the number
+      // This allows searching by "100-001" or "Juan" or "Juan 100"
       return searchTerms.every(term => name.includes(term) || number.includes(term));
     });
   };

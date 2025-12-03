@@ -2,23 +2,24 @@ import { supabase } from '../lib/supabase';
 import { WaterBill } from '../types';
 
 // Map DB snake_case to Frontend camelCase
+// Added robust fallbacks to handle different column naming conventions
 const mapToFrontend = (row: any): WaterBill => ({
   id: row.id,
-  accountNumber: row.account_number,
-  accountName: row.name, // Mapped from DB column 'name'
-  address: row.address,
-  amount: Number(row.bill_amount), // Mapped from DB column 'bill_amount'
-  dueDate: row.due_date,
-  amountAfterDueDate: Number(row.amount_after_due_date),
+  accountNumber: row.account_number || row.account_no || '',
+  accountName: row.name || row.account_name || '', 
+  address: row.address || '',
+  amount: Number(row.bill_amount ?? row.amount ?? 0), 
+  dueDate: row.due_date || '',
+  amountAfterDueDate: Number(row.amount_after_due_date ?? row.amount_after_due ?? 0),
 });
 
 // Map Frontend camelCase to DB snake_case
 const mapToDb = (bill: WaterBill) => ({
   id: bill.id,
   account_number: bill.accountNumber,
-  name: bill.accountName, // Maps to DB column 'name'
+  name: bill.accountName, 
   address: bill.address,
-  bill_amount: bill.amount, // Maps to DB column 'bill_amount'
+  bill_amount: bill.amount, 
   due_date: bill.dueDate,
   amount_after_due_date: bill.amountAfterDueDate,
 });
