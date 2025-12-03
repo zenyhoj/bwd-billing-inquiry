@@ -7,9 +7,12 @@ import { LoginModal } from './components/LoginModal';
 import { WaterBill } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
-import { Upload, Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
+import { Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
+
+// STRICT ADMIN EMAIL
+const ADMIN_EMAIL = 'joe.balingit@gmail.com';
 
 export default function App() {
   // State
@@ -48,9 +51,6 @@ export default function App() {
         const supabaseData = await getAllBills();
         
         if (isMounted) {
-          // If the fetch didn't throw, we are connected. 
-          // Even if it returns 0 rows (due to RLS or empty DB), we trust it.
-          // This prevents "Demo Mode" from appearing when we are actually connected but just seeing 0 rows.
           setData(supabaseData);
           setDataSource('supabase');
           
@@ -61,7 +61,6 @@ export default function App() {
       } catch (error) {
         console.error("Critical error loading data from Supabase:", error);
         if (isMounted) {
-          // Only fallback to mock data on actual connection ERROR
           setData(INITIAL_MOCK_DATA);
           setDataSource('mock');
         }
@@ -81,24 +80,15 @@ export default function App() {
 
   const handleDataLoaded = async (newData: WaterBill[]) => {
     try {
-      // Keep loading state true while processing
-      // We don't set loading state on UI here because AdminPanel handles its own loading UI,
-      // but we update the main data immediately.
-      
-      // Perform the save
       await saveAllBills(newData);
-      
-      // Update local state to match DB
       setData(newData);
       setDataSource('supabase');
       setQuery('');
       setHasSearched(false);
-      
-      // AdminPanel displays the success message
     } catch (error) {
       console.error("Failed to save data:", error);
       alert("Failed to save data to Supabase. Please check your internet connection.");
-      throw error; // Propagate error to AdminPanel
+      throw error; 
     }
   };
 
@@ -150,6 +140,8 @@ export default function App() {
 
   const isCentered = !hasSearched;
   const isLoggedIn = !!session;
+  // Strict check: Only show admin button if email matches exactly
+  const isOwner = session?.user?.email === ADMIN_EMAIL;
 
   if (loading) {
     return (
@@ -177,13 +169,16 @@ export default function App() {
                  {session?.user?.email}
                </span>
                
-               <button 
-                 onClick={() => setShowAdmin(true)}
-                 className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide shadow-sm"
-               >
-                 <Database className="h-3 w-3" />
-                 <span>Manage Database</span>
-               </button>
+               {/* ONLY SHOW IF USER IS THE OWNER */}
+               {isOwner && (
+                 <button 
+                   onClick={() => setShowAdmin(true)}
+                   className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide shadow-sm"
+                 >
+                   <Database className="h-3 w-3" />
+                   <span>Manage Database</span>
+                 </button>
+               )}
                
                <button 
                  onClick={handleLogout}
@@ -252,6 +247,7 @@ export default function App() {
             {dataSource === 'supabase' ? 'Supabase Connected' : 'Demo Mode'}
           </div>
 
+          {/* Hidden login button - can also access via top nav */}
           {!isLoggedIn && (
             <button 
               onClick={() => setShowLogin(true)}
@@ -271,7 +267,8 @@ export default function App() {
         />
       )}
 
-      {showAdmin && isLoggedIn && (
+      {/* Only render AdminPanel if user is logged in AND is the owner */}
+      {showAdmin && isOwner && (
         <AdminPanel 
           onClose={() => setShowAdmin(false)} 
           onDataLoaded={handleDataLoaded}
