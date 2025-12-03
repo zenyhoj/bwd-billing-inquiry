@@ -27,14 +27,18 @@ const mapToDb = (bill: WaterBill) => ({
 export const getAllBills = async (): Promise<WaterBill[]> => {
   let allBills: any[] = [];
   let from = 0;
-  const limit = 1000;
+  // Lower limit to 250 to ensure robust pagination on all network speeds
+  const limit = 250; 
   let hasMore = true;
 
-  // Loop to fetch all records in batches of 1000
+  console.log("Starting data fetch...");
+
+  // Loop to fetch all records in batches
   while (hasMore) {
     const { data, error } = await supabase
       .from('water_bills')
       .select('*')
+      .order('id', { ascending: true }) // Critical: Must order to ensure consistent pagination
       .range(from, from + limit - 1);
 
     if (error) {
@@ -54,21 +58,22 @@ export const getAllBills = async (): Promise<WaterBill[]> => {
     }
   }
 
+  console.log(`Fetch complete. Total records: ${allBills.length}`);
   return allBills.map(mapToFrontend);
 };
 
 export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
   // 1. Fetch all IDs first to efficiently delete them
-  // We need to fetch ALL IDs here too, just like select to ensure we clean the whole DB
   let allIdsToDelete: string[] = [];
   let from = 0;
-  const limit = 1000;
+  const limit = 500;
   let hasMore = true;
 
   while (hasMore) {
     const { data, error } = await supabase
       .from('water_bills')
       .select('id')
+      .order('id', { ascending: true })
       .range(from, from + limit - 1);
       
     if (error) throw error;

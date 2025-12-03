@@ -104,20 +104,35 @@ export default function App() {
 
   const getMatches = (searchQuery: string) => {
     if (!searchQuery.trim()) return [];
+    
+    const cleanStr = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
     const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
+    const fullSearchClean = cleanStr(searchQuery);
 
     return data.filter(item => {
-      // Robust string conversion in case data fields are null or numbers
+      // Robust string conversion
       const name = String(item.accountName || '').toLowerCase();
-      // Remove spaces from account number for searching (e.g. 100-001 matches 100001)
       const number = String(item.accountNumber || '').toLowerCase();
-      const cleanNumber = number.replace(/[^a-z0-9]/g, '');
       
-      // Check if ALL search terms appear in EITHER the name OR the number
-      // This allows searching by "100-001" or "Juan" or "Juan 100"
+      const cleanName = cleanStr(name);
+      const cleanNumber = cleanStr(number);
+
+      // Strategy 1: Check if strict "clean string" contains the full "clean query"
+      // This handles "Balingit, Joe" matching "Balingit Joe" perfectly
+      if (cleanName.includes(fullSearchClean) || cleanNumber.includes(fullSearchClean)) {
+        return true;
+      }
+
+      // Strategy 2: Check if every individual word in the query exists in the target
+      // This handles "Joe Balingit" matching "Balingit, Joe" (out of order)
       return searchTerms.every(term => {
-        const cleanTerm = term.replace(/[^a-z0-9]/g, '');
-        return name.includes(term) || number.includes(term) || (cleanNumber && cleanTerm && cleanNumber.includes(cleanTerm));
+        const cleanTerm = cleanStr(term);
+        if (!cleanTerm) return true; 
+
+        return name.includes(term) || 
+               number.includes(term) || 
+               cleanName.includes(cleanTerm) || 
+               cleanNumber.includes(cleanTerm);
       });
     });
   };
