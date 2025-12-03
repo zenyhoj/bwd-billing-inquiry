@@ -7,7 +7,7 @@ import { LoginModal } from './components/LoginModal';
 import { WaterBill } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
-import { Upload, Lock, LogOut, Loader2, Cloud } from 'lucide-react';
+import { Upload, Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
@@ -79,18 +79,26 @@ export default function App() {
 
   const handleDataLoaded = async (newData: WaterBill[]) => {
     try {
-      setLoading(true);
+      // Keep loading state true while processing
+      // We don't set loading state on UI here because AdminPanel handles its own loading UI,
+      // but we update the main data immediately.
+      
+      // Perform the save
       await saveAllBills(newData);
+      
+      // Update local state to match DB
       setData(newData);
       setDataSource('supabase');
       setQuery('');
       setHasSearched(false);
-      alert("Database updated successfully!");
+      
+      // AdminPanel displays the success message, so we don't need a global alert here necessarily,
+      // but strictly following previous behavior or enhancing it:
+      // We let the AdminPanel handle the success visual feedback.
     } catch (error) {
       console.error("Failed to save data:", error);
       alert("Failed to save data to Supabase. Please check your internet connection.");
-    } finally {
-      setLoading(false);
+      throw error; // Propagate error to AdminPanel
     }
   };
 
@@ -166,14 +174,14 @@ export default function App() {
            {isAdmin && (
              <>
                <span className="text-xs text-gray-500 hidden sm:inline-block pr-2">
-                 {session.user.email}
+                 {session?.user?.email}
                </span>
                <button 
                  onClick={() => setShowAdmin(true)}
-                 className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide"
+                 className="flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-xs font-medium tracking-wide shadow-sm"
                >
-                 <Upload className="h-3 w-3" />
-                 <span>Update DB</span>
+                 <Database className="h-3 w-3" />
+                 <span>Manage Database</span>
                </button>
                
                <button 

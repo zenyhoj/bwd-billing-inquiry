@@ -37,26 +37,27 @@ export const getAllBills = async (): Promise<WaterBill[]> => {
 };
 
 export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
-  // 1. Delete all existing records (to mimic the "Monthly Upload" replacement behavior)
-  // Note: We use a not-equal filter on a non-existent ID to ensure we target rows, 
-  // but simpler is to delete everything.
-  // Since Supabase doesn't have a simple "TRUNCATE" via JS client without Rpc, 
-  // we will delete where ID is not null.
-  
-  const { error: deleteError } = await supabase
+  // 1. Fetch all IDs first to efficiently delete them
+  // This is safer than using a 'not equals' workaround for truncate
+  const { data: existingIds, error: fetchError } = await supabase
     .from('water_bills')
-    .delete()
-    .neq('id', 'placeholder_impossible_id'); // This effectively acts as 'delete all' if we fetch IDs first, but let's batch it.
-  
-  // A safer way to clear table for client-side usage:
-  // Fetch all IDs then delete them.
-  const { data: existingIds } = await supabase.from('water_bills').select('id');
+    .select('id');
+    
+  if (fetchError) throw fetchError;
+
   if (existingIds && existingIds.length > 0) {
      const idsToDelete = existingIds.map(r => r.id);
-     await supabase.from('water_bills').delete().in('id', idsToDelete);
+     
+     // Delete in batches if too many, but Supabase handles reasonably large arrays
+     const { error: deleteError } = await supabase
+       .from('water_bills')
+       .delete()
+       .in('id', idsToDelete);
+       
+     if (deleteError) throw deleteError;
   }
 
-  // 2. Insert new records in batches to avoid payload limits
+  // 2. Insert new records in batches
   const dbData = bills.map(mapToDb);
   const BATCH_SIZE = 100;
   
