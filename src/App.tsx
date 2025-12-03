@@ -48,18 +48,20 @@ export default function App() {
         const supabaseData = await getAllBills();
         
         if (isMounted) {
-          if (supabaseData.length > 0) {
-            setData(supabaseData);
-            setDataSource('supabase');
-          } else {
-            console.log("Supabase table is empty, falling back to mock data.");
-            setData(INITIAL_MOCK_DATA);
-            setDataSource('mock');
+          // If the fetch didn't throw, we are connected. 
+          // Even if it returns 0 rows (due to RLS or empty DB), we trust it.
+          // This prevents "Demo Mode" from appearing when we are actually connected but just seeing 0 rows.
+          setData(supabaseData);
+          setDataSource('supabase');
+          
+          if (supabaseData.length === 0) {
+            console.log("Supabase returned 0 records. If you expected data, check your RLS policies for 'select' permission.");
           }
         }
       } catch (error) {
         console.error("Critical error loading data from Supabase:", error);
         if (isMounted) {
+          // Only fallback to mock data on actual connection ERROR
           setData(INITIAL_MOCK_DATA);
           setDataSource('mock');
         }
@@ -92,9 +94,7 @@ export default function App() {
       setQuery('');
       setHasSearched(false);
       
-      // AdminPanel displays the success message, so we don't need a global alert here necessarily,
-      // but strictly following previous behavior or enhancing it:
-      // We let the AdminPanel handle the success visual feedback.
+      // AdminPanel displays the success message
     } catch (error) {
       console.error("Failed to save data:", error);
       alert("Failed to save data to Supabase. Please check your internet connection.");
