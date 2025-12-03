@@ -60,51 +60,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden relative flex flex-col max-h-[90vh]">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center">
-            <FileSpreadsheet className="mr-2 text-blue-600" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-lg overflow-hidden relative flex flex-col max-h-[90vh] border border-gray-100 shadow-2xl rounded-xl">
+        <div className="p-6 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
             Database Management
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
+            className="text-gray-400 hover:text-gray-900 transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto">
-          <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
-             <h3 className="text-sm font-semibold text-blue-900 mb-2">Instructions</h3>
-             <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>Required Columns: <strong>ID, Account Number, Account Name, Address, Amount, Due Date, Amount After Due Date</strong>.</li>
-             </ul>
-             
-             <div className="mt-4 pt-3 border-t border-blue-100 text-xs text-blue-700 space-y-2">
-               <div>
-                 <strong>Option 1 (Public Update):</strong> Save your file as <code>database.xlsx</code> and upload it to the <code>public/</code> folder using GitHub Desktop. This updates the site for ALL users.
-               </div>
-               <div>
-                 <strong>Option 2 (Local Test):</strong> Use the upload button below. This updates the search result ONLY for this browser/device.
-               </div>
+        <div className="p-6 pt-0 overflow-y-auto">
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Instructions</h3>
+             <div className="text-sm text-gray-600 space-y-2">
+               <p>Update database by dropping an Excel file below.</p>
+               <p className="text-xs text-gray-500">Required: ID, Account Number, Account Name, Address, Amount, Due Date, Late Amount</p>
              </div>
 
              <button 
                onClick={handleDownloadTemplate}
-               className="mt-3 flex items-center text-xs font-medium text-blue-700 hover:text-blue-800 hover:underline"
+               className="mt-4 flex items-center text-xs font-medium text-gray-900 hover:underline"
              >
-               <FileDown className="w-4 h-4 mr-1" />
-               Download Sample Template
+               <FileDown className="w-3 h-3 mr-1" />
+               Download Template
              </button>
           </div>
 
           <div 
-            className={`border-3 border-dashed rounded-xl p-10 text-center transition-all duration-200 cursor-pointer ${
+            className={`border-2 border-dashed rounded-lg p-10 text-center transition-all duration-200 cursor-pointer ${
               isDragOver 
-                ? 'border-blue-500 bg-blue-50/50 scale-[0.99]' 
-                : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                ? 'border-gray-900 bg-gray-50' 
+                : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
             }`}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
@@ -119,58 +110,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onDataLoaded, c
               onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             />
             
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className={`p-4 rounded-full shadow-sm ${loading ? 'bg-gray-100' : 'bg-white text-blue-600'}`}>
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="text-gray-400">
                 {loading ? (
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
                 ) : (
-                  <Upload className="h-8 w-8" />
+                  <Upload className="h-6 w-6" />
                 )}
               </div>
               <div className="space-y-1">
-                <p className="text-lg font-medium text-gray-700">
-                  {loading ? 'Processing Data...' : 'Drop file here'}
+                <p className="text-sm font-medium text-gray-900">
+                  {loading ? 'Processing...' : 'Click or Drop File'}
                 </p>
-                {!loading && (
-                   <p className="text-sm text-gray-500">
-                     or <span className="text-blue-600 font-medium hover:underline">browse computer</span>
-                   </p>
-                )}
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm flex items-start animate-in slide-in-from-bottom-2">
-              <AlertTriangle className="h-5 w-5 mr-3 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Upload Failed</p>
-                <p>{error}</p>
-              </div>
+            <div className="mt-6 text-red-600 text-sm flex items-center justify-center animate-in slide-in-from-bottom-2">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              <p>{error}</p>
             </div>
           )}
 
           {successMsg && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-100 text-green-700 rounded-xl text-sm flex items-start animate-in slide-in-from-bottom-2">
-              <CheckCircle className="h-5 w-5 mr-3 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Upload Successful</p>
-                <p>{successMsg}</p>
-              </div>
+            <div className="mt-6 text-green-600 text-sm flex items-center justify-center animate-in slide-in-from-bottom-2">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              <p>{successMsg}</p>
             </div>
           )}
         </div>
         
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-between items-center shrink-0">
-          <div className="flex items-center text-xs text-gray-500">
-            <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-            Database Status: <strong>{currentDataCount} records</strong>
-          </div>
+          <span className="text-xs text-gray-500 font-mono">
+            {currentDataCount} records loaded
+          </span>
           <button 
             onClick={onClose}
-            className="px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+            className="px-6 py-2 bg-black text-white rounded text-xs font-medium uppercase tracking-wide hover:bg-gray-800 transition-colors"
           >
-            Done
+            Close
           </button>
         </div>
       </div>

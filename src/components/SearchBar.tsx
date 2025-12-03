@@ -52,67 +52,60 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     setShowSuggestions(false);
   };
 
+  const hasSuggestions = suggestions.length > 0 && showSuggestions;
+
   return (
     <div ref={wrapperRef} className="w-full max-w-2xl mx-auto relative group">
       <div className="relative z-30">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors duration-300" />
         </div>
         <input
           type="text"
-          className={`block w-full pl-11 pr-12 py-4 bg-white border border-gray-200 shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:shadow-lg transition-all duration-200 text-lg
-            ${suggestions.length > 0 && showSuggestions ? 'rounded-t-3xl rounded-b-none border-b-gray-100' : 'rounded-full'}`}
+          className={`block w-full pl-12 pr-12 py-4 bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-900 focus:ring-0 transition-all duration-300 text-lg font-light
+            ${hasSuggestions ? 'rounded-t-2xl border-b-gray-100' : 'rounded-full hover:border-gray-300'}`}
           placeholder="Enter Account Name or Account No."
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
+          autoComplete="off"
+          autoCorrect="off"
         />
         {value && (
           <button
             onClick={onClear}
-            className="absolute inset-y-0 right-14 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-4 flex items-center text-gray-300 hover:text-gray-600 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         )}
-        <div className="absolute inset-y-0 right-2 flex items-center">
-           <button 
-             onClick={() => { setShowSuggestions(false); onSearch(); }}
-             className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
-           >
-             <Search className="h-5 w-5" />
-           </button>
-        </div>
       </div>
 
       {/* Autocomplete Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 bg-white border border-t-0 border-gray-200 rounded-b-3xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+      {hasSuggestions && (
+        <div className="absolute top-full left-0 right-0 bg-white border border-t-0 border-gray-200 rounded-b-2xl shadow-lg shadow-gray-100/50 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <ul>
             {suggestions.map((item) => (
               <li 
                 key={item.id}
                 onClick={() => handleSelect(item)}
-                className="px-5 py-3 hover:bg-blue-50 cursor-pointer flex items-center justify-between group/item border-b border-gray-50 last:border-0 transition-colors"
+                className="px-6 py-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between group/item border-b border-gray-50 last:border-0 transition-colors"
               >
                 <div className="flex items-center">
-                  <div className="bg-gray-100 p-2 rounded-full mr-3 group-hover/item:bg-blue-100 transition-colors">
-                    <User className="h-4 w-4 text-gray-500 group-hover/item:text-blue-600" />
+                  <div className="mr-4 text-gray-300 group-hover/item:text-gray-900 transition-colors">
+                    <User className="h-4 w-4" />
                   </div>
                   <div className="flex flex-col text-left">
-                    <span className="font-medium text-gray-900">{item.accountName}</span>
-                    <span className="text-xs text-gray-400">#{item.accountNumber}</span>
+                    <span className="font-normal text-gray-900">{item.accountName}</span>
+                    <span className="text-xs text-gray-400 font-mono tracking-wide">#{item.accountNumber}</span>
                   </div>
-                </div>
-                <div className="text-xs text-blue-600 font-medium opacity-0 group-hover/item:opacity-100 transition-opacity">
-                  Select
                 </div>
               </li>
             ))}
           </ul>
-          <div className="px-4 py-2 bg-gray-50 text-xs text-center text-gray-400 border-t border-gray-100">
-             Press Enter to see all matches
+          <div className="px-4 py-2 bg-gray-50 text-[10px] uppercase tracking-wider text-center text-gray-400 border-t border-gray-100">
+             Press Enter to search
           </div>
         </div>
       )}
