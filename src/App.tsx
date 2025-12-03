@@ -7,7 +7,7 @@ import { LoginModal } from './components/LoginModal';
 import { WaterBill, AppUser } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
-import { Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
+import { Lock, LogOut, Loader2, Cloud, Database, WifiOff } from 'lucide-react';
 
 // STRICT ADMIN EMAIL
 const ADMIN_EMAIL = 'joe.balingit@gmail.com';
@@ -53,7 +53,7 @@ export default function App() {
           setDataSource('supabase');
           
           if (supabaseData.length === 0) {
-            console.log("Supabase returned 0 records. If you expected data, check your RLS policies for 'select' permission.");
+            console.warn("Supabase returned 0 records. Check RLS policies if data exists.");
           }
         }
       } catch (error) {
@@ -248,8 +248,8 @@ export default function App() {
             dataSource === 'supabase' ? 'text-green-600 bg-green-50' : 
             'text-amber-600 bg-amber-50'
           }`}>
-            {dataSource === 'supabase' && <Cloud className="w-3 h-3 mr-1" />}
-            {dataSource === 'supabase' ? 'Supabase Connected' : 'Demo Mode'}
+            {dataSource === 'supabase' ? <Cloud className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
+            {dataSource === 'supabase' ? `Supabase: ${data.length} records` : 'Demo Mode'}
           </div>
 
           {/* Hidden login button - can also access via top nav */}
