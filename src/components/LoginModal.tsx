@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Mail, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { AppUser } from '../types';
 
 interface LoginModalProps {
   onClose: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: AppUser) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
@@ -13,22 +14,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleManualAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Strict Sign In Only - No Sign Up logic allowed here
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
+      // Query the custom 'allowed_users' table
+      const { data, error: dbError } = await supabase
+        .from('allowed_users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (dbError || !data) {
+        throw new Error("User not found");
+      }
+
+      // Check password (plain text comparison as requested)
+      // Note: In production, passwords should be hashed (e.g., bcrypt)
+      if (data.password !== password) {
+        throw new Error("Incorrect password");
+      }
+
+      // Success
+      const user: AppUser = {
+        email: data.email,
+        username: data.username
+      };
       
-      onLoginSuccess();
+      onLoginSuccess(user);
       onClose();
     } catch (err: any) {
+      console.error(err);
       setError("Invalid login credentials.");
     } finally {
       setLoading(false);
@@ -57,7 +75,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess 
             </p>
           </div>
           
-          <form onSubmit={handleEmailAuth} className="space-y-4">
+          <form onSubmit={handleManualAuth} className="space-y-4">
             <div className="relative group">
               <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
               <input

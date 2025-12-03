@@ -17,3 +17,8 @@ export enum ViewState {
   HOME = 'HOME',
   ADMIN = 'ADMIN',
 }
+
+export interface AppUser {
+  email: string;
+  username?: string;
+}

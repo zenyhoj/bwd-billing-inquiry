@@ -4,15 +4,14 @@ import { SearchBar } from './components/SearchBar';
 import { ResultTable } from './components/ResultTable';
 import { AdminPanel } from './components/AdminPanel';
 import { LoginModal } from './components/LoginModal';
-import { WaterBill } from './types';
+import { WaterBill, AppUser } from './types';
 import { INITIAL_MOCK_DATA, APP_NAME } from './constants';
 import { saveAllBills, getAllBills } from './utils/db';
 import { Lock, LogOut, Loader2, Cloud, Database } from 'lucide-react';
-import { supabase } from './lib/supabase';
-import { Session } from '@supabase/supabase-js';
 
 // STRICT ADMIN EMAIL
 const ADMIN_EMAIL = 'joe.balingit@gmail.com';
+const SESSION_KEY = 'bwd_admin_session';
 
 export default function App() {
   // State
@@ -23,7 +22,7 @@ export default function App() {
   const [dataSource, setDataSource] = useState<'supabase' | 'mock'>('mock');
   
   // Admin & Auth State
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   
@@ -33,19 +32,18 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+    // 1. Check local storage for manual session
+    const storedSession = localStorage.getItem(SESSION_KEY);
+    if (storedSession) {
+      try {
+        const parsedUser = JSON.parse(storedSession);
+        setUser(parsedUser);
+      } catch (e) {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    }
 
-    // 2. Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    // 3. Load Bill Data
+    // 2. Load Bill Data
     const loadData = async () => {
       try {
         const supabaseData = await getAllBills();
@@ -72,11 +70,23 @@ export default function App() {
     };
     
     loadData();
-    return () => { 
-      isMounted = false; 
-      subscription.unsubscribe();
-    };
+    return () => { isMounted = false; };
   }, []);
+
+  const handleLoginSuccess = (loggedInUser: AppUser) => {
+    setUser(loggedInUser);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(loggedInUser));
+    // If it's the admin, auto-show the panel
+    if (loggedInUser.email === ADMIN_EMAIL) {
+      setShowAdmin(true);
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem(SESSION_KEY);
+    setShowAdmin(false);
+  };
 
   const handleDataLoaded = async (newData: WaterBill[]) => {
     try {
@@ -90,11 +100,6 @@ export default function App() {
       alert("Failed to save data to Supabase. Please check your internet connection.");
       throw error; 
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setShowAdmin(false);
   };
 
   const getMatches = (searchQuery: string) => {
@@ -139,9 +144,9 @@ export default function App() {
   }, [query, data, hasSearched]);
 
   const isCentered = !hasSearched;
-  const isLoggedIn = !!session;
+  const isLoggedIn = !!user;
   // Strict check: Only show admin button if email matches exactly
-  const isOwner = session?.user?.email === ADMIN_EMAIL;
+  const isOwner = user?.email === ADMIN_EMAIL;
 
   if (loading) {
     return (
@@ -166,7 +171,7 @@ export default function App() {
            {isLoggedIn ? (
              <>
                <span className="text-xs text-gray-500 hidden sm:inline-block pr-2">
-                 {session?.user?.email}
+                 {user?.email}
                </span>
                
                {/* ONLY SHOW IF USER IS THE OWNER */}
@@ -263,7 +268,7 @@ export default function App() {
       {showLogin && (
         <LoginModal 
           onClose={() => setShowLogin(false)}
-          onLoginSuccess={() => setShowAdmin(true)}
+          onLoginSuccess={handleLoginSuccess}
         />
       )}
 
