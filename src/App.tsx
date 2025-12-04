@@ -16,7 +16,8 @@ const SESSION_KEY = 'bwd_admin_session';
 export default function App() {
   // State
   const [data, setData] = useState<WaterBill[]>([]);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [loadedCount, setLoadedCount] = useState(0); 
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [dataSource, setDataSource] = useState<'supabase' | 'mock'>('mock');
@@ -46,7 +47,10 @@ export default function App() {
     // 2. Load Bill Data from Supabase
     const loadData = async () => {
       try {
-        const supabaseData = await getAllBills();
+        // Pass callback to update progress UI
+        const supabaseData = await getAllBills((count) => {
+          if (isMounted) setLoadedCount(count);
+        });
         
         if (isMounted) {
           setData(supabaseData);
@@ -199,7 +203,9 @@ export default function App() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-500">
         <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
         <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Loading All Records...</p>
-        <p className="text-xs text-gray-400 mt-2">Connecting to Database</p>
+        <p className="text-xs text-gray-400 mt-2">
+          {loadedCount > 0 ? `Fetched ${loadedCount.toLocaleString()} records` : 'Connecting to Database'}
+        </p>
       </div>
     );
   }
@@ -296,7 +302,7 @@ export default function App() {
             'text-amber-600 bg-amber-50'
           }`}>
             {dataSource === 'supabase' ? <Cloud className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
-            {dataSource === 'supabase' ? `Supabase: ${data.length} records` : 'Demo Mode'}
+            {dataSource === 'supabase' ? `Supabase: ${data.length.toLocaleString()} records` : 'Demo Mode'}
           </div>
 
           {/* Hidden login button - can also access via top nav */}

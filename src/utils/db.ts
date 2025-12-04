@@ -24,11 +24,11 @@ const mapToDb = (bill: WaterBill) => ({
   amount_after_due_date: bill.amountAfterDueDate,
 });
 
-export const getAllBills = async (): Promise<WaterBill[]> => {
+export const getAllBills = async (onProgress?: (count: number) => void): Promise<WaterBill[]> => {
   let allBills: any[] = [];
   let from = 0;
-  // Lower limit to 250 to ensure robust pagination on all network speeds
-  const limit = 250; 
+  // Increased limit to 1000 to speed up loading of large datasets (e.g. 8000 records)
+  const limit = 1000; 
   let hasMore = true;
 
   console.log("Starting data fetch...");
@@ -49,6 +49,12 @@ export const getAllBills = async (): Promise<WaterBill[]> => {
     if (data && data.length > 0) {
       allBills = [...allBills, ...data];
       from += limit;
+      
+      // Notify progress
+      if (onProgress) {
+        onProgress(allBills.length);
+      }
+
       // If we got fewer records than the limit, we've reached the end
       if (data.length < limit) {
         hasMore = false;
@@ -66,7 +72,7 @@ export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
   // 1. Fetch all IDs first to efficiently delete them
   let allIdsToDelete: string[] = [];
   let from = 0;
-  const limit = 500;
+  const limit = 1000;
   let hasMore = true;
 
   while (hasMore) {
