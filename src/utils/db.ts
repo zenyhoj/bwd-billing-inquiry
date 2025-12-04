@@ -27,7 +27,7 @@ const mapToDb = (bill: WaterBill) => ({
 export const getAllBills = async (onProgress?: (count: number) => void): Promise<WaterBill[]> => {
   let allBills: any[] = [];
   let from = 0;
-  // Increased limit to 1000 to speed up loading of large datasets (e.g. 8000 records)
+  // Limit set to 1000 for efficient fetching of large datasets
   const limit = 1000; 
   let hasMore = true;
 
@@ -108,7 +108,9 @@ export const saveAllBills = async (bills: WaterBill[]): Promise<void> => {
 
   // 2. Insert new records in batches
   const dbData = bills.map(mapToDb);
-  const BATCH_SIZE = 100;
+  
+  // INCREASED BATCH SIZE TO 1000 TO PREVENT TIMEOUTS
+  const BATCH_SIZE = 1000;
   
   for (let i = 0; i < dbData.length; i += BATCH_SIZE) {
     const batch = dbData.slice(i, i + BATCH_SIZE);
