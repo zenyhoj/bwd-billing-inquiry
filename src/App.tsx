@@ -47,6 +47,7 @@ export default function App() {
     // 2. Load Bill Data from Supabase
     const loadData = async () => {
       try {
+        console.log("Attempting to connect to database...");
         // Pass callback to update progress UI
         const supabaseData = await getAllBills((count) => {
           if (isMounted) setLoadedCount(count);
@@ -57,13 +58,14 @@ export default function App() {
           setDataSource('supabase');
           
           if (supabaseData.length === 0) {
-            console.warn("Supabase returned 0 records. Check RLS policies if data exists.");
+            console.warn("Supabase returned 0 records. Check RLS policies or table existence.");
           }
         }
       } catch (error) {
         console.error("Critical error loading data from Supabase:", error);
         if (isMounted) {
-          // Only fallback to mock if Supabase fails entirely
+          // Fallback to mock data on error so app is usable
+          console.log("Falling back to demo/mock data.");
           setData(INITIAL_MOCK_DATA);
           setDataSource('mock');
         }
@@ -103,7 +105,6 @@ export default function App() {
     } catch (error) {
       console.error("Failed to save data:", error);
       alert("Failed to save data to Supabase. Please check your internet connection.");
-      throw error; 
     }
   };
 
@@ -202,7 +203,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-500">
         <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
-        <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Loading All Records...</p>
+        <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Loading System...</p>
         <p className="text-xs text-gray-400 mt-2">
           {loadedCount > 0 ? `Fetched ${loadedCount.toLocaleString()} records` : 'Connecting to Database'}
         </p>

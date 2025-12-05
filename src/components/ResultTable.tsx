@@ -100,11 +100,14 @@ export const ResultTable: React.FC<ResultTableProps> = ({ results }) => {
          ))}
       </div>
 
-      <div className="mt-8 bg-yellow-50 border border-yellow-100 rounded-lg p-4 flex gap-3 text-yellow-900 shadow-sm items-start justify-center text-xs">
-        <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600" />
-        <p className="max-w-md">
-           <strong>Note:</strong> Billing information is for inquiry purposes only. If the account is already paid, please disregard this result.
-        </p>
+      <div className="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm flex gap-3 text-yellow-900 animate-in slide-in-from-bottom-2">
+        <Info className="h-5 w-5 shrink-0 mt-0.5 text-yellow-600" />
+        <div className="text-sm">
+            <p className="font-bold text-yellow-800">Important Note</p>
+            <p className="text-yellow-700 leading-relaxed">
+              This billing information is for inquiry purposes only. If the account is already paid, please disregard this result.
+            </p>
+        </div>
       </div>
     </div>
   );

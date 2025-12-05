@@ -3,15 +3,23 @@ import { WaterBill } from '../types';
 
 // Map DB snake_case to Frontend camelCase
 // Added robust fallbacks to handle different column naming conventions
-const mapToFrontend = (row: any): WaterBill => ({
-  id: row.id,
-  accountNumber: row.account_number || row.account_no || '',
-  accountName: row.name || row.account_name || '', 
-  address: row.address || '',
-  amount: Number(row.bill_amount ?? row.amount ?? 0), 
-  dueDate: row.due_date || '',
-  amountAfterDueDate: Number(row.amount_after_due_date ?? row.amount_after_due ?? 0),
-});
+const mapToFrontend = (row: any): WaterBill => {
+  // Helper to safely parse numbers
+  const safeNumber = (val: any) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  return {
+    id: String(row.id || Math.random().toString(36).substr(2, 9)), // Ensure ID always exists
+    accountNumber: String(row.account_number || row.account_no || ''),
+    accountName: String(row.name || row.account_name || ''), 
+    address: String(row.address || ''),
+    amount: safeNumber(row.bill_amount ?? row.amount), 
+    dueDate: String(row.due_date || ''),
+    amountAfterDueDate: safeNumber(row.amount_after_due_date ?? row.amount_after_due),
+  };
+};
 
 // Map Frontend camelCase to DB snake_case
 const mapToDb = (bill: WaterBill) => ({
@@ -33,35 +41,41 @@ export const getAllBills = async (onProgress?: (count: number) => void): Promise
 
   console.log("Starting data fetch...");
 
-  // Loop to fetch all records in batches
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from('water_bills')
-      .select('*')
-      .order('id', { ascending: true }) // Critical: Must order to ensure consistent pagination
-      .range(from, from + limit - 1);
+  try {
+    // Loop to fetch all records in batches
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('water_bills')
+        .select('*')
+        .order('id', { ascending: true }) // Critical: Must order to ensure consistent pagination
+        .range(from, from + limit - 1);
 
-    if (error) {
-      console.error('Error fetching data from Supabase:', error);
-      throw error;
-    }
-
-    if (data && data.length > 0) {
-      allBills = [...allBills, ...data];
-      from += limit;
-      
-      // Notify progress
-      if (onProgress) {
-        onProgress(allBills.length);
+      if (error) {
+        console.warn('Supabase fetch error:', error);
+        // If the table doesn't exist or RLS fails, stop fetching and throw
+        throw error;
       }
 
-      // If we got fewer records than the limit, we've reached the end
-      if (data.length < limit) {
+      if (data && data.length > 0) {
+        allBills = [...allBills, ...data];
+        from += limit;
+        
+        // Notify progress
+        if (onProgress) {
+          onProgress(allBills.length);
+        }
+
+        // If we got fewer records than the limit, we've reached the end
+        if (data.length < limit) {
+          hasMore = false;
+        }
+      } else {
         hasMore = false;
       }
-    } else {
-      hasMore = false;
     }
+  } catch (err) {
+    console.error("Error in getAllBills loop:", err);
+    throw err;
   }
 
   console.log(`Fetch complete. Total records: ${allBills.length}`);
